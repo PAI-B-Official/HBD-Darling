@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selamat Ulang Tahun!</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Poppins:wght@300;400;600&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            overflow-x: hidden;
+            background-color: #0f172a;
+        }
+
+        .font-handwriting { font-family: 'Dancing Script', cursive; }
+        .font-arabic { font-family: 'Amiri', serif; }
+
+        /* Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Animations */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float { animation: float 5s ease-in-out infinite; }
+
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(236,72,153,0.4)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 25px rgba(236,72,153,0.8)); }
+        }
+        .gift-box {
+            animation: pulse-glow 2.5s infinite;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .gift-box:hover { transform: scale(1.1) rotate(-3deg); }
+
+        .hidden-custom { display: none !important; }
+        
+        .fade-in { animation: fadeIn 1.2s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Video Transitions */
+        #videoContainer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: black;
+            z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 1;
+            transition: opacity 1.5s ease-out; /* Efek memudar */
+        }
+        
+        /* Class untuk memicu fade out */
+        .video-fade-out {
+            opacity: 0 !important;
+        }
+
+        #videoBlocker {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10000; cursor: none; 
+        }
+
+        .profile-img {
+            width: 100%; height: 100%; object-fit: cover; border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen w-screen relative flex flex-col items-center justify-center selection:bg-pink-500 selection:text-white overflow-y-auto">
+
+    <!-- Background -->
+    <canvas id="bgCanvas" class="fixed top-0 left-0 w-full h-full z-0 pointer-events-none"></canvas>
+    <div class="fixed top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800/50 via-slate-900/80 to-slate-950 z-0 pointer-events-none"></div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="relative z-10 w-full max-w-lg px-4 py-8 flex flex-col items-center min-h-screen justify-center">
+
+        <!-- STEP 1: GIFT BOX -->
+        <div id="giftSection" class="flex flex-col items-center justify-center text-center w-full min-h-[50vh]">
+            <p class="mb-8 text-pink-200 text-lg font-light tracking-wide animate-pulse">
+                Assalamu'alaikum, ketuk kado untuk membuka
+            </p>
+            
+            <div onclick="startSurprise()" class="gift-box relative group cursor-pointer p-4">
+                <div class="text-[7rem] md:text-[9rem] leading-none select-none drop-shadow-2xl">
+                    🎁
+                </div>
+                <div class="mt-6 text-sm text-white/80 bg-white/10 px-6 py-2 rounded-full backdrop-blur-sm border border-white/10 transition-all group-hover:bg-white/20 shadow-lg">
+                    Buka Hadiah
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: VIDEO -->
+        <div id="videoContainer" class="hidden-custom">
+            <!-- Ganti 'HBD.mp4' dengan file video Anda -->
+            <video id="introVideo" class="w-full h-full object-contain" playsinline>
+                <source src="HBD.mp4" type="video/mp4">
+            </video>
+            <div id="videoBlocker"></div>
+        </div>
+
+        <!-- STEP 3: RESULT SECTION (Dynamic Content) -->
+        <div id="resultSection" class="hidden-custom w-full flex flex-col gap-6 items-center pb-10">
+            <!-- Konten akan diisi otomatis oleh Javascript -->
+        </div>
+
+    </div>
+
+    <!-- Audio -->
+    <audio id="bgMusic" loop>
+        <source src="https://assets.mixkit.co/active_storage/sfx/951/951.wav" type="audio/wav">
+    </audio>
+
+    <script>
+        // --- 1. CONFIGURATION: DATABASE TEMAN (EDIT DISINI) ---
+        // CATATAN PENTING:
+        // Gunakan angka untuk tanggal dan bulan. Contoh: "25-12" atau "8-12".
+        
+        const friendsDatabase = [
+            // --- Coba isi tanggal HARI INI disini untuk tes ---
+            { nama: "TESTER (HAPUS NANTI)", tanggal: "10-12", foto: "https://ui-avatars.com/api/?name=Test&background=random" },
+
+            // --- DATA REAL SESUAI LIST ---
+            { nama: "Fakhry", tanggal: "28-10", foto: "https://i.ibb.co.com/3ytbB3bs/Fakhry.jpg" },
+            { nama: "Ulfa", tanggal: "06-11", foto: "https://i.ibb.co.com/fVnxMnbM/Ulfa.jpg" },
+            { nama: "Ayu", tanggal: "06-11", foto: "https://i.ibb.co.com/T6G584W/Ayu.jpg" },
+            { nama: "Ubay", tanggal: "27-11", foto: "https://i.ibb.co.com/8DTHNmN1/Ubaidillah.jpg" }, 
+            { nama: "Alyvia", tanggal: "29-11", foto: "https://i.ibb.co.com/j9kTSqVN/Alyvia.jpg" },
+            { nama: "Ady", tanggal: "08-12", foto: "https://i.ibb.co.com/3ycvDN0x/Ady.jpg" },
+            { nama: "Zain", tanggal: "25-04", foto: "https://i.ibb.co.com/35LTF95t/Zain.jpg" },
+            { nama: "Hanni", tanggal: "16-04", foto: "https://i.ibb.co.com/WpRW8nk3/Hanni.jpg" },
+            { nama: "Lubadul", tanggal: "15-08", foto: "https://ui-avatars.com/api/?name=Lubadul&background=random" }, 
+            { nama: "Arina", tanggal: "19-08", foto: "https://i.ibb.co.com/HfFbTk5d/Arina.jpg" },
+
+            // Sisa data (Masih DD-MM, silakan isi nanti):
+            { nama: "Hanan", tanggal: "DD-MM", foto: "https://i.ibb.co.com/ZRRX7M4p/Hanan.jpg" },
+            { nama: "Aqila", tanggal: "DD-MM", foto: "https://i.ibb.co.com/s9kRp6r0/Aqila.jpg" },
+            { nama: "Anggun", tanggal: "DD-MM", foto: "https://i.ibb.co.com/PZBVB5qN/Anggun.jpg" },
+            { nama: "Yuyun", tanggal: "DD-MM", foto: "https://i.ibb.co.com/mrhGkwVg/Yuyun.jpg" },
+            { nama: "Youvischa", tanggal: "DD-MM", foto: "https://i.ibb.co.com/DDBT5PS0/Youvischa.jpg" },
+            { nama: "Yoana", tanggal: "DD-MM", foto: "https://i.ibb.co.com/8g9FF4zH/Yoana.jpg" },
+            { nama: "Tsabita", tanggal: "DD-MM", foto: "https://i.ibb.co.com/DH2s9tsY/Tsabita.jpg" },
+            { nama: "Pniel", tanggal: "DD-MM", foto: "https://i.ibb.co.com/35y5ZszF/Pniel.jpg" },
+            { nama: "Putri", tanggal: "DD-MM", foto: "https://i.ibb.co.com/xK65ZXBK/Putri.jpg" },
+            { nama: "Lusi", tanggal: "DD-MM", foto: "https://i.ibb.co.com/LDqfr0GJ/Lusi.jpg" },
+            { nama: "Juli", tanggal: "DD-MM", foto: "https://i.ibb.co.com/cccBPB93/Juli.jpg" },
+            { nama: "Fikri", tanggal: "DD-MM", foto: "https://i.ibb.co.com/LDD9ZbFL/Fikri.jpg" },
+            { nama: "Elok", tanggal: "DD-MM", foto: "https://i.ibb.co.com/b5dB7M6T/Elok.jpg" },
+            { nama: "Devi", tanggal: "DD-MM", foto: "https://i.ibb.co.com/jPpbP6mh/Devi.jpg" },
+            { nama: "Azizah", tanggal: "DD-MM", foto: "https://i.ibb.co.com/WvKp3sFy/Azizah.jpg" }
+        ];
+
+        // --- 2. LOGIC SYSTEM ---
+        
+        // Fungsi Normalisasi Tanggal (Biar 1-1 sama dengan 01-01)
+        function normalizeDate(dateStr) {
+            if (!dateStr || dateStr === "DD-MM") return "INVALID";
+            const parts = dateStr.split("-");
+            if (parts.length !== 2) return "INVALID";
+            // Tambahkan 0 di depan jika cuma 1 digit
+            const d = parts[0].padStart(2, '0');
+            const m = parts[1].padStart(2, '0');
+            return `${d}-${m}`;
+        }
+
+        // Cek siapa yang ultah hari ini
+        function checkBirthday() {
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const todayString = `${day}-${month}`;
+
+            console.log("Sistem mendeteksi tanggal hari ini:", todayString);
+
+            // Filter database dengan normalisasi
+            const birthdayPeople = friendsDatabase.filter(person => {
+                return normalizeDate(person.tanggal) === todayString;
+            });
+            
+            return birthdayPeople;
+        }
+
+        // Render Kartu Ucapan (Untuk yang ultah)
+        function createBirthdayCard(person) {
+            return `
+            <div class="glass-card rounded-3xl p-6 md:p-8 text-center text-white relative overflow-hidden border-t border-l border-white/20 fade-in shadow-2xl w-full mb-4">
+                
+                <!-- Decoration -->
+                <div class="absolute -top-20 -right-20 w-48 h-48 bg-pink-500 rounded-full blur-[60px] opacity-20 pointer-events-none"></div>
+                <div class="absolute -bottom-20 -left-20 w-48 h-48 bg-purple-600 rounded-full blur-[60px] opacity-20 pointer-events-none"></div>
+
+                <!-- Profile Image -->
+                <div class="relative mx-auto w-32 h-32 mb-5 animate-float">
+                    <div class="w-full h-full rounded-full p-[4px] bg-gradient-to-tr from-pink-300 via-purple-300 to-indigo-300 shadow-lg">
+                        <div class="w-full h-full rounded-full bg-slate-900 overflow-hidden relative">
+                             <img src="${person.foto}" onerror="this.src='https://ui-avatars.com/api/?name=${person.nama}&background=random'" alt="${person.nama}" class="profile-img">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text Content -->
+                <div class="space-y-2 mb-5">
+                    <h2 class="text-xs uppercase tracking-[0.3em] text-pink-200 font-semibold opacity-80">Happy Birthday</h2>
+                    <h1 class="font-handwriting text-4xl text-white drop-shadow-sm bg-clip-text text-transparent bg-gradient-to-r from-pink-200 via-white to-purple-200">
+                        ${person.nama}
+                    </h1>
+                </div>
+
+                <!-- Arabic Prayer -->
+                <div class="relative mb-6 px-2">
+                    <p class="font-arabic text-2xl leading-relaxed mb-2 text-center text-pink-100" dir="rtl">
+                        بَارَكَ اللَّهُ فِي عُمْرِك
+                    </p>
+                    <p class="text-[11px] font-light italic text-gray-300 leading-relaxed">
+                        "Semoga Allah memberkahi usiamu, menyehatkan tubuhmu, dan menerangi hatimu."
+                    </p>
+                </div>
+            </div>
+            `;
+        }
+
+        // Render Pesan Zonk (Jika tidak ada yang ultah)
+        function createNoBirthdayCard() {
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const detectedDate = `${day}-${month}`;
+            
+            return `
+            <div class="glass-card rounded-3xl p-8 text-center text-white border border-white/10 fade-in w-full max-w-sm">
+                <div class="text-6xl mb-4">🤔</div>
+                <h2 class="text-xl font-bold mb-2">Siapa Yaa yang Ulang Tahun?</h2>
+                <p class="text-gray-300 text-sm mb-4">Sepertinya belum ada data yang cocok dengan hari ini.</p>
+                
+                <div class="p-4 bg-black/40 rounded-lg text-xs text-gray-300 text-left font-mono border border-white/10">
+                    <div class="font-bold text-pink-400 mb-2 border-b border-white/10 pb-1">INFO DEBUG (PENTING)</div>
+                    <div class="mb-1">Sistem membaca hari ini tanggal:</div>
+                    <div class="text-xl text-white font-bold mb-3 tracking-widest bg-white/10 p-1 text-center rounded">${detectedDate}</div>
+                    
+                    <div>Solusi:</div>
+                    <div class="opacity-80">Cari nama teman di kode (friendsDatabase) dan ubah tanggalnya menjadi <span class="text-pink-300 font-bold">"${detectedDate}"</span> agar muncul.</div>
+                </div>
+            </div>
+            `;
+        }
+
+        // --- 3. ANIMATION & VIDEO LOGIC ---
+
+        const giftSection = document.getElementById('giftSection');
+        const resultSection = document.getElementById('resultSection');
+        const videoContainer = document.getElementById('videoContainer');
+        const video = document.getElementById('introVideo');
+        const audio = document.getElementById('bgMusic');
+        
+        let surpriseTimer = null;
+        let fadeTimer = null;
+
+        async function startSurprise() {
+            // 1. Request Fullscreen (Wajib ada interaksi user sebelumnya)
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    await document.documentElement.webkitRequestFullscreen();
+                }
+            } catch (err) {
+                console.log("Fullscreen denied:", err);
+            }
+
+            // 2. Lock Orientation to Landscape (Android/Chrome)
+            if (screen.orientation && screen.orientation.lock) {
+                try {
+                    await screen.orientation.lock("landscape");
+                } catch (err) {
+                    console.log("Orientation lock failed/not supported:", err);
+                }
+            }
+
+            // UI Logic
+            giftSection.style.opacity = '0';
+            
+            setTimeout(() => {
+                giftSection.classList.add('hidden-custom');
+                videoContainer.classList.remove('hidden-custom');
+                
+                video.currentTime = 0;
+                video.play().catch(e => console.log("Autoplay blocked", e));
+
+                // 1. Jadwalkan FADE OUT pada detik ke-24 (24000ms)
+                fadeTimer = setTimeout(() => {
+                    videoContainer.classList.add('video-fade-out');
+                }, 24000);
+
+                // 2. Jadwalkan SELESAI VIDEO & GANTI HALAMAN pada detik ke-25 (25000ms)
+                surpriseTimer = setTimeout(() => {
+                    finishVideo();
+                }, 25000);
+
+            }, 500);
+        }
+
+        function finishVideo() {
+            if (resultSection.children.length > 0 && !videoContainer.classList.contains('hidden-custom')) return; // Prevent double run
+
+            clearTimeout(surpriseTimer);
+            clearTimeout(fadeTimer);
+
+            video.pause();
+            
+            // Exit Fullscreen
+            if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+
+            // Unlock Orientation (Kembali ke auto/portrait)
+            if (screen.orientation && screen.orientation.unlock) {
+                try {
+                    screen.orientation.unlock();
+                } catch(e) {}
+            }
+            
+            // Sembunyikan video
+            videoContainer.classList.add('hidden-custom');
+            videoContainer.classList.remove('video-fade-out'); // Reset class
+            resultSection.classList.remove('hidden-custom');
+
+            // --- GENERATE CONTENT BASED ON DATE ---
+            const celebrants = checkBirthday();
+            let contentHTML = "";
+
+            if (celebrants.length > 0) {
+                // Jika ada yang ultah
+                celebrants.forEach(person => {
+                    contentHTML += createBirthdayCard(person);
+                });
+                
+                // Tambah tombol kontrol musik di bawah semua kartu
+                contentHTML += `
+                <div class="flex flex-col items-center gap-3 w-full max-w-xs mt-2 fade-in">
+                    <button onclick="toggleMusic(this)" class="group flex items-center gap-3 bg-white/10 border border-white/10 px-5 py-2 rounded-full w-full justify-center backdrop-blur-md">
+                        <div class="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center shadow-lg">
+                            <i class="fas fa-play text-white text-xs ml-0.5"></i>
+                        </div>
+                        <span class="text-xs font-medium text-white">Putar Musik</span>
+                    </button>
+                    <button onclick="fireConfetti()" class="text-xs text-pink-200/70 hover:text-white px-4 py-2">
+                        <i class="fas fa-magic"></i> Aamiinkan lagi
+                    </button>
+                </div>`;
+                
+                fireConfetti();
+            } else {
+                // Jika tidak ada yang ultah
+                contentHTML = createNoBirthdayCard();
+            }
+
+            resultSection.innerHTML = contentHTML;
+        }
+
+        // --- UTILITIES ---
+        let isMusicPlaying = false;
+        function toggleMusic(btn) {
+            const icon = btn.querySelector('i');
+            const text = btn.querySelector('span');
+            
+            if (isMusicPlaying) {
+                audio.pause();
+                icon.className = "fas fa-play text-white text-xs ml-0.5";
+                text.innerText = "Putar Musik";
+            } else {
+                audio.play();
+                icon.className = "fas fa-pause text-white text-xs";
+                text.innerText = "Jeda Musik";
+            }
+            isMusicPlaying = !isMusicPlaying;
+        }
+
+        function fireConfetti() {
+            const defaults = { origin: { y: 0.7 } };
+            function fire(particleRatio, opts) {
+                confetti(Object.assign({}, defaults, opts, {
+                    particleCount: Math.floor(200 * particleRatio)
+                }));
+            }
+            fire(0.25, { spread: 26, startVelocity: 55, colors: ['#ec4899', '#d8b4fe'] });
+            fire(0.2, { spread: 60, colors: ['#ffffff'] });
+            fire(0.35, { spread: 100, decay: 0.91, colors: ['#f472b6'] });
+        }
+
+        // Canvas Background (Stars)
+        const canvas = document.getElementById('bgCanvas');
+        const ctx = canvas.getContext('2d');
+        let particlesArray = [];
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2;
+                this.speedX = (Math.random() * 0.5) - 0.25;
+                this.speedY = (Math.random() * 0.5) - 0.25;
+                this.opacity = Math.random() * 0.5 + 0.1;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x > canvas.width) this.x = 0; else if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0; else if (this.y < 0) this.y = canvas.height;
+            }
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        function initParticles() {
+            particlesArray = [];
+            for (let i = 0; i < (canvas.width * canvas.height) / 10000; i++) particlesArray.push(new Particle());
+        }
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particlesArray.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateParticles);
+        }
+        initParticles();
+        animateParticles();
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; initParticles(); });
+    </script>
+</body>
+</html>
