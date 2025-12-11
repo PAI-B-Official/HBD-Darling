@@ -83,6 +83,373 @@
         .profile-img {
             width: 100%; height: 100%; object-fit: cover; border-radius: 9999px;
         }
+        
+        /* Custom scrollbar for long text */
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1); 
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3); 
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="min-h-screen w-screen relative flex flex-col items-center justify-center selection:bg-pink-500 selection:text-white overflow-y-auto">
+
+    <!-- Background -->
+    <canvas id="bgCanvas" class="fixed top-0 left-0 w-full h-full z-0 pointer-events-none"></canvas>
+    <div class="fixed top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800/50 via-slate-900/80 to-slate-950 z-0 pointer-events-none"></div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="relative z-10 w-full max-w-lg px-4 py-8 flex flex-col items-center min-h-screen justify-center">
+
+        <!-- STEP 1: GIFT BOX -->
+        <div id="giftSection" class="flex flex-col items-center justify-center text-center w-full min-h-[50vh]">
+            <p class="mb-8 text-pink-200 text-lg font-light tracking-wide animate-pulse">
+                Assalamu'alaikum, ketuk kado untuk membuka
+            </p>
+            
+            <div onclick="startSurprise()" class="gift-box relative group cursor-pointer p-4">
+                <div class="text-[7rem] md:text-[9rem] leading-none select-none drop-shadow-2xl">
+                    🎁
+                </div>
+                <div class="mt-6 text-sm text-white/80 bg-white/10 px-6 py-2 rounded-full backdrop-blur-sm border border-white/10 transition-all group-hover:bg-white/20 shadow-lg">
+                    Buka Hadiah
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: VIDEO -->
+        <div id="videoContainer" class="hidden-custom">
+            <!-- Ganti 'HBD.mp4' dengan file video Anda -->
+            <video id="introVideo" class="w-full h-full object-contain" playsinline>
+                <source src="HBD.mp4" type="video/mp4">
+            </video>
+            <div id="videoBlocker"></div>
+        </div>
+
+        <!-- STEP 3: RESULT SECTION (Dynamic Content) -->
+        <div id="resultSection" class="hidden-custom w-full flex flex-col gap-6 items-center pb-10">
+            <!-- Konten akan diisi otomatis oleh Javascript -->
+        </div>
+
+    </div>
+
+    <!-- Audio -->
+    <audio id="bgMusic" loop>
+        <!-- LAGU BARAKALLAH (Pastikan file ada di folder yang sama) -->
+        <source src="Barakallah.mp3" type="audio/mp3">
+    </audio>
+
+    <script>
+        // --- 1. CONFIGURATION: DATABASE TEMAN (EDIT DISINI) ---
+        // CATATAN PENTING:
+        // Gunakan angka untuk tanggal dan bulan. Contoh: "25-12" atau "8-12".
+        
+        const friendsDatabase = [
+            // --- Coba isi tanggal HARI INI disini untuk tes ---
+            { nama: "TESTER (HAPUS NANTI)", tanggal: "11-12", foto: "https://ui-avatars.com/api/?name=Test&background=random" },
+
+            // --- DATA REAL SESUAI LIST ---
+            { nama: "Fakhry", tanggal: "28-10", foto: "https://i.ibb.co.com/3ytbB3bs/Fakhry.jpg" },
+            { nama: "Ulfa", tanggal: "06-11", foto: "https://i.ibb.co.com/fVnxMnbM/Ulfa.jpg" },
+            { nama: "Ayu", tanggal: "06-11", foto: "https://i.ibb.co.com/T6G584W/Ayu.jpg" },
+            { nama: "Ubay", tanggal: "27-11", foto: "https://i.ibb.co.com/8DTHNmN1/Ubaidillah.jpg" }, 
+            { nama: "Alyvia", tanggal: "29-11", foto: "https://i.ibb.co.com/j9kTSqVN/Alyvia.jpg" },
+            { nama: "Ady", tanggal: "08-12", foto: "https://i.ibb.co.com/3ycvDN0x/Ady.jpg" },
+            { nama: "Zain", tanggal: "25-04", foto: "https://i.ibb.co.com/35LTF95t/Zain.jpg" },
+            { nama: "Hanni", tanggal: "16-04", foto: "https://i.ibb.co.com/WpRW8nk3/Hanni.jpg" },
+            { nama: "Lubadul", tanggal: "15-08", foto: "https://ui-avatars.com/api/?name=Lubadul&background=random" }, 
+            { nama: "Arina", tanggal: "19-08", foto: "https://i.ibb.co.com/HfFbTk5d/Arina.jpg" },
+            { nama: "Hanan", tanggal: "DD-MM", foto: "https://i.ibb.co.com/ZRRX7M4p/Hanan.jpg" },
+            { nama: "Aqila", tanggal: "DD-MM", foto: "https://i.ibb.co.com/s9kRp6r0/Aqila.jpg" },
+            { nama: "Anggun", tanggal: "DD-MM", foto: "https://i.ibb.co.com/PZBVB5qN/Anggun.jpg" },
+            { nama: "Yuyun", tanggal: "DD-MM", foto: "https://i.ibb.co.com/mrhGkwVg/Yuyun.jpg" },
+            { nama: "Youvischa", tanggal: "DD-MM", foto: "https://i.ibb.co.com/DDBT5PS0/Youvischa.jpg" },
+            { nama: "Yoana", tanggal: "22-12", foto: "https://i.ibb.co.com/8g9FF4zH/Yoana.jpg" },
+            { nama: "Tsabita", tanggal: "DD-MM", foto: "https://i.ibb.co.com/DH2s9tsY/Tsabita.jpg" },
+            { nama: "Pniel", tanggal: "DD-MM", foto: "https://i.ibb.co.com/35y5ZszF/Pniel.jpg" },
+            { nama: "Putri", tanggal: "12-12", foto: "https://i.ibb.co.com/xK65ZXBK/Putri.jpg" },
+            { nama: "Lusi", tanggal: "DD-MM", foto: "https://i.ibb.co.com/LDqfr0GJ/Lusi.jpg" },
+            { nama: "Juli", tanggal: "DD-MM", foto: "https://i.ibb.co.com/cccBPB93/Juli.jpg" },
+            { nama: "Fikri", tanggal: "DD-MM", foto: "https://i.ibb.co.com/LDD9ZbFL/Fikri.jpg" },
+            { nama: "Elok", tanggal: "DD-MM", foto: "https://i.ibb.co.com/b5dB7M6T/Elok.jpg" },
+            { nama: "Devi", tanggal: "12-08", foto: "https://i.ibb.co.com/jPpbP6mh/Devi.jpg" },
+            { nama: "Azizah", tanggal: "DD-MM", foto: "https://i.ibb.co.com/WvKp3sFy/Azizah.jpg" }
+        ];
+
+        // --- 2. LOGIC SYSTEM ---
+        
+        function normalizeDate(dateStr) {
+            if (!dateStr || dateStr === "DD-MM") return "INVALID";
+            const parts = dateStr.split("-");
+            if (parts.length !== 2) return "INVALID";
+            const d = parts[0].padStart(2, '0');
+            const m = parts[1].padStart(2, '0');
+            return `${d}-${m}`;
+        }
+
+        function checkBirthday() {
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const todayString = `${day}-${month}`;
+
+            console.log("Sistem mendeteksi tanggal hari ini:", todayString);
+
+            const birthdayPeople = friendsDatabase.filter(person => {
+                return normalizeDate(person.tanggal) === todayString;
+            });
+            
+            return birthdayPeople;
+        }
+
+        // Render Kartu Ucapan (Untuk yang ultah)
+        function createBirthdayCard(person) {
+            // Text to speech message (Doa Panjang) dengan tanda baca agar jeda lebih natural
+            const ttsMessage = `Barakallahu fii umrik, ${person.nama}. ... Ya Allah, ... panjangkanlah umurnya, ... sehatkanlah badannya, ... terangilah hatinya, ... tetapkanlah imannya, ... baikkanlah amalannya, ... luaskanlah rezekinya, ... dekatkanlah pada kebaikan, dan jauhkanlah dari kejahatan. ... Kabulkanlah segala hajatnya, dalam agama, dunia, dan akhirat. ... Aamiin.`;
+
+            return `
+            <div class="glass-card rounded-3xl p-6 md:p-8 text-center text-white relative overflow-hidden border-t border-l border-white/20 fade-in shadow-2xl w-full mb-4">
+                
+                <!-- Decoration -->
+                <div class="absolute -top-20 -right-20 w-48 h-48 bg-pink-500 rounded-full blur-[60px] opacity-20 pointer-events-none"></div>
+                <div class="absolute -bottom-20 -left-20 w-48 h-48 bg-purple-600 rounded-full blur-[60px] opacity-20 pointer-events-none"></div>
+
+                <!-- Profile Image -->
+                <div class="relative mx-auto w-32 h-32 mb-4 animate-float">
+                    <div class="w-full h-full rounded-full p-[4px] bg-gradient-to-tr from-pink-300 via-purple-300 to-indigo-300 shadow-lg">
+                        <div class="w-full h-full rounded-full bg-slate-900 overflow-hidden relative">
+                             <img src="${person.foto}" onerror="this.src='https://ui-avatars.com/api/?name=${person.nama}&background=random'" alt="${person.nama}" class="profile-img">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text Content -->
+                <div class="space-y-1 mb-4">
+                    <h2 class="text-xs uppercase tracking-[0.3em] text-pink-200 font-semibold opacity-80">Happy Birthday</h2>
+                    <h1 class="font-handwriting text-4xl text-white drop-shadow-sm bg-clip-text text-transparent bg-gradient-to-r from-pink-200 via-white to-purple-200">
+                        ${person.nama}
+                    </h1>
+                </div>
+
+                <!-- Arabic Prayer (Long Version) & Meaning -->
+                <!-- PERBAIKAN: Menambahkan leading-relaxed atau specific line-height dan py lebih besar -->
+                <div class="relative mb-4 px-2">
+                    <div class="font-arabic text-2xl md:text-3xl leading-[2.2] md:leading-[2.5] mb-4 text-center text-pink-100 drop-shadow-md py-4 px-1" dir="rtl">
+                         اللَّهُمَّ طَوِّلْ عُمُورَنَا وَصَحِّحْ أَجْسَادَنَا وَنَوِّرْ قُلُوبَنَا وَثَبِّتْ إِيمَانَنَا وَأَحْسِنْ أَعْمَالَنَا وَوَسِّعْ أَرْزَاقَنَا وَإِلَى الْخَيْرِ قَرِّبْنَا وَعَنِ الشَّرِّ أَبْعِدْنَا وَاقْضِ حَوَائِجَنَا فِي الدِّينِ وَالدُّنْيَا وَالْآخِرَةِ
+                    </div>
+                    
+                    <div class="bg-white/5 rounded-xl p-4 backdrop-blur-sm border border-white/5 max-h-48 overflow-y-auto custom-scroll">
+                        <p class="text-xs md:text-sm font-light text-gray-200 leading-relaxed text-justify">
+                            "Ya Allah, panjangkanlah umur kami, sehatkanlah jasad kami, terangilah hati kami, tetapkanlah iman kami, baikkanlah amalan kami, luaskanlah rezeki kami, dekatkanlah kami pada kebaikan dan jauhkanlah kami dari kejahatan, kabulkanlah segala kebutuhan kami dalam agama, dunia, dan akhirat. Sesungguhnya Engkau Maha Kuasa atas segala sesuatu."
+                        </p>
+                        <p class="mt-3 text-xs text-pink-300 italic text-center font-medium">
+                            ~ Doa Panjang Umur & Keberkahan ~
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="flex items-center justify-center gap-2 mt-2">
+                    <!-- Tombol Bacakan Doa (TTS) - Tombol Musik SUDAH DIHAPUS -->
+                    <button onclick="speakPrayer('${ttsMessage}')" class="group flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/40 border border-purple-400/30 px-6 py-2.5 rounded-full transition-all w-full justify-center max-w-[200px]">
+                        <div class="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center shadow-md animate-pulse">
+                            <i class="fas fa-volume-up text-white text-[10px]"></i>
+                        </div>
+                        <span class="text-[11px] font-medium text-white uppercase tracking-wider">Bacakan Doa</span>
+                    </button>
+                </div>
+
+            </div>
+            `;
+        }
+
+        // Render Pesan Zonk (Jika tidak ada yang ultah)
+        function createNoBirthdayCard() {
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const detectedDate = `${day}-${month}`;
+            
+            return `
+            <div class="glass-card rounded-3xl p-8 text-center text-white border border-white/10 fade-in w-full max-w-sm">
+                <div class="text-6xl mb-4">🤔</div>
+                <h2 class="text-xl font-bold mb-2">Siapa Yaa yang Ulang Tahun?</h2>
+                <p class="text-gray-300 text-sm mb-4">Sepertinya belum ada data yang cocok dengan hari ini.</p>
+                
+                <div class="p-4 bg-black/40 rounded-lg text-xs text-gray-300 text-left font-mono border border-white/10">
+                    <div class="font-bold text-pink-400 mb-2 border-b border-white/10 pb-1">INFO DEBUG (PENTING)</div>
+                    <div class="mb-1">Sistem membaca hari ini tanggal:</div>
+                    <div class="text-xl text-white font-bold mb-3 tracking-widest bg-white/10 p-1 text-center rounded">${detectedDate}</div>
+                    
+                    <div>Solusi:</div>
+                    <div class="opacity-80">Ubah tanggal "TESTER" di kode menjadi <span class="text-pink-300 font-bold">"${detectedDate}"</span> untuk melihat preview.</div>
+                </div>
+            </div>
+            `;
+        }
+
+        // --- 3. ANIMATION & VIDEO LOGIC ---
+
+        const giftSection = document.getElementById('giftSection');
+        const resultSection = document.getElementById('resultSection');
+        const videoContainer = document.getElementById('videoContainer');
+        const video = document.getElementById('introVideo');
+        const audio = document.getElementById('bgMusic');
+        
+        let surpriseTimer = null;
+        let fadeTimer = null;
+
+        async function startSurprise() {
+            // NOTE: Musik dihapus dari sini agar tidak menyala saat video mulai
+
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    await document.documentElement.webkitRequestFullscreen();
+                }
+            } catch (err) {
+                console.log("Fullscreen denied:", err);
+            }
+
+            if (screen.orientation && screen.orientation.lock) {
+                try {
+                    await screen.orientation.lock("landscape");
+                } catch (err) {
+                    console.log("Orientation lock failed/not supported:", err);
+                }
+            }
+
+            giftSection.style.opacity = '0';
+            
+            setTimeout(() => {
+                giftSection.classList.add('hidden-custom');
+                videoContainer.classList.remove('hidden-custom');
+                
+                video.currentTime = 0;
+                video.play().catch(e => console.log("Autoplay blocked", e));
+
+                fadeTimer = setTimeout(() => {
+                    videoContainer.classList.add('video-fade-out');
+                }, 24000);
+
+                surpriseTimer = setTimeout(() => {
+                    finishVideo();
+                }, 25000);
+
+            }, 500);
+        }
+
+        function finishVideo() {
+            if (resultSection.children.length > 0 && !videoContainer.classList.contains('hidden-custom')) return; 
+
+            clearTimeout(surpriseTimer);
+            clearTimeout(fadeTimer);
+
+            video.pause();
+            
+            if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+
+            if (screen.orientation && screen.orientation.unlock) {
+                try {
+                    screen.orientation.unlock();
+                } catch(e) {}
+            }
+            
+            videoContainer.classList.add('hidden-custom');
+            videoContainer.classList.remove('video-fade-out');
+            resultSection.classList.remove('hidden-custom');
+
+            // --- NYALAKAN MUSIK DI SINI (SETELAH VIDEO SELESAI) ---
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log("Auto play music failed:", e));
+            isMusicPlaying = true; // Set status musik menyala
+
+            const celebrants = checkBirthday();
+            let contentHTML = "";
+
+            if (celebrants.length > 0) {
+                celebrants.forEach(person => {
+                    contentHTML += createBirthdayCard(person);
+                });
+                
+                // Extra Confetti Button at bottom
+                contentHTML += `
+                <div class="flex flex-col items-center gap-3 w-full max-w-xs mt-2 fade-in">
+                    <button onclick="fireConfetti()" class="text-xs text-pink-200/70 hover:text-white px-4 py-2">
+                        <i class="fas fa-magic"></i> Rayakan lagi
+                    </button>
+                </div>`;
+                
+                fireConfetti();
+            } else {
+                contentHTML = createNoBirthdayCard();
+            }
+
+            resultSection.innerHTML = contentHTML;
+        }
+
+        // --- UTILITIES ---
+        let isMusicPlaying = false; // Default false, nanti jadi true di finishVideo
+        
+        // --- TTS FUNCTION YANG LEBIH NATURAL ---
+        function speakPrayer(text) {
+            window.speechSynthesis.cancel();
+
+            // Memuat daftar suara y            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float { animation: float 5s ease-in-out infinite; }
+
+        @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(236,72,153,0.4)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 25px rgba(236,72,153,0.8)); }
+        }
+        .gift-box {
+            animation: pulse-glow 2.5s infinite;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .gift-box:hover { transform: scale(1.1) rotate(-3deg); }
+
+        .hidden-custom { display: none !important; }
+        
+        .fade-in { animation: fadeIn 1.2s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Video Transitions */
+        #videoContainer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: black;
+            z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 1;
+            transition: opacity 1.5s ease-out; /* Efek memudar */
+        }
+        
+        /* Class untuk memicu fade out */
+        .video-fade-out {
+            opacity: 0 !important;
+        }
+
+        #videoBlocker {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10000; cursor: none; 
+        }
+
+        .profile-img {
+            width: 100%; height: 100%; object-fit: cover; border-radius: 9999px;
+        }
     </style>
 </head>
 <body class="min-h-screen w-screen relative flex flex-col items-center justify-center selection:bg-pink-500 selection:text-white overflow-y-auto">
@@ -450,3 +817,4 @@
 </body>
 
 </html>
+
